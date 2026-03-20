@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>StairSense</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg: #0a0b0d;
+    --panel: #111318;
+    --border: #1e2230;
+    --accent: #00e5a0;
+    --accent2: #ff4d6d;
+    --accent3: #ffd166;
+    --text: #d0d6e8;
+    --muted: #555e7a;
+    --up: #00e5a0;
+    --down: #ff4d6d;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    user-select: none;
+  }
+
+  /* grid noise texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .logo {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .logo span { color: var(--muted); }
+
+  .status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--muted);
+    box-shadow: none;
+    transition: all 0.3s;
+  }
+  .status-dot.active {
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* MAIN COUNTER */
+  .counter-block {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px 24px 24px;
+    margin-bottom: 16px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .counter-block::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  .counter-label {
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .counter-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 96px;
+    line-height: 1;
+    color: var(--accent);
+    text-shadow: 0 0 40px rgba(0,229,160,0.3);
+    transition: color 0.3s, text-shadow 0.3s;
+  }
+  .counter-value.going-up {
+    color: var(--up);
+    text-shadow: 0 0 40px rgba(0,229,160,0.4);
+  }
+  .counter-value.going-down {
+    color: var(--down);
+    text-shadow: 0 0 40px rgba(255,77,109,0.4);
+  }
+
+  .direction-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 5px 14px;
+    border-radius: 2px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    background: rgba(0,229,160,0.08);
+    color: var(--muted);
+    transition: all 0.3s;
+  }
+  .direction-badge.up { background: rgba(0,229,160,0.12); color: var(--up); }
+  .direction-badge.down { background: rgba(255,77,109,0.12); color: var(--down); }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 10px;
+    text-align: center;
+  }
+  .stat-num {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 28px;
+    color: var(--accent3);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* OSCILLOSCOPE */
+  .scope-block {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+  .scope-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .scope-title {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .scope-legend {
+    display: flex;
+    gap: 12px;
+    font-size: 10px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .legend-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  canvas#scope {
+    width: 100%;
+    height: 100px;
+    display: block;
+    border-radius: 2px;
+  }
+
+  /* PHASE INDICATOR */
+  .phase-block {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .phase-icon {
+    font-size: 28px;
+    width: 40px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .phase-info { flex: 1; }
+  .phase-name {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .phase-desc {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .phase-confidence {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 22px;
+    color: var(--accent3);
+    flex-shrink: 0;
+  }
+
+  /* CONTROLS */
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .btn {
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--panel);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,229,160,0.06);
+  }
+  .btn-primary:hover { background: rgba(0,229,160,0.12); }
+  .btn-danger {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: rgba(255,77,109,0.06);
+  }
+  .btn-danger:hover { background: rgba(255,77,109,0.12); }
+
+  /* PERMISSION OVERLAY */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,11,13,0.97);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 32px;
+    text-align: center;
+    gap: 20px;
+  }
+  .overlay.hidden { display: none; }
+  .overlay-icon { font-size: 64px; }
+  .overlay-title {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .overlay-desc {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 320px;
+  }
+  .overlay .btn {
+    padding: 16px 32px;
+    font-size: 14px;
+    width: 100%;
+    max-width: 280px;
+  }
+
+  /* ALERT BAR */
+  .alert {
+    background: rgba(255,77,109,0.1);
+    border: 1px solid rgba(255,77,109,0.3);
+    border-radius: 4px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--accent2);
+    margin-bottom: 16px;
+    display: none;
+  }
+  .alert.show { display: block; }
+
+  /* TIPS */
+  .tips {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.8;
+    letter-spacing: 0.5px;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    margin-top: 4px;
+  }
+  .tips strong { color: var(--accent3); }
+
+  /* step flash */
+  @keyframes stepFlash {
+    0% { opacity: 1; transform: scale(1.08); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .flash { animation: stepFlash 0.2s ease-out; }
+</style>
+</head>
+<body>
+
+<!-- PERMISSION OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="overlay-icon">📡</div>
+  <div class="overlay-title">StairSense</div>
+  <div class="overlay-desc">
+    Needs access to your phone's <strong>motion sensors</strong> (accelerometer & gyroscope) to detect stair climbing patterns.
+    <br><br>
+    On iOS, tap the button below to grant permission. On Android, just tap Start.
+  </div>
+  <button class="btn btn-primary" onclick="requestPermission()">ENABLE SENSORS &amp; START</button>
+  <div style="font-size:11px; color: var(--muted); max-width:280px;">
+    No data is sent anywhere. Everything runs locally on your device.
+  </div>
+</div>
+
+<div class="container">
+  <div class="header">
+    <div class="logo">Stair<span>Sense</span></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span id="statusText" style="font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;">IDLE</span>
+      <div class="status-dot" id="statusDot"></div>
+    </div>
+  </div>
+
+  <div id="alertBar" class="alert">
+    ⚠ Motion sensors unavailable on this device or browser.
+  </div>
+
+  <!-- MAIN COUNTER -->
+  <div class="counter-block">
+    <div class="counter-label">Stairs Climbed (Net)</div>
+    <div class="counter-value" id="mainCount">0</div>
+    <div class="direction-badge" id="dirBadge">⏸ STANDBY</div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num" id="statUp">0</div>
+      <div class="stat-label">↑ Up</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statDown">0</div>
+      <div class="stat-label">↓ Down</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statSteps">0</div>
+      <div class="stat-label">Steps</div>
+    </div>
+  </div>
+
+  <!-- OSCILLOSCOPE -->
+  <div class="scope-block">
+    <div class="scope-header">
+      <div class="scope-title">Vertical Acceleration</div>
+      <div class="scope-legend">
+        <span><span class="legend-dot" style="background:#00e5a0"></span>accel</span>
+        <span><span class="legend-dot" style="background:#ff4d6d"></span>peak</span>
+      </div>
+    </div>
+    <canvas id="scope" width="440" height="100"></canvas>
+  </div>
+
+  <!-- PHASE -->
+  <div class="phase-block">
+    <div class="phase-icon" id="phaseIcon">⏸</div>
+    <div class="phase-info">
+      <div class="phase-name" id="phaseName">Waiting</div>
+      <div class="phase-desc" id="phaseDesc">Tap START or move phone to begin</div>
+    </div>
+    <div class="phase-confidence" id="phaseConf">—</div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <button class="btn btn-primary" id="btnStart" onclick="toggleStart()">START</button>
+    <button class="btn btn-danger" onclick="resetAll()">RESET</button>
+  </div>
+
+  <div class="tips">
+    <strong>TIPS:</strong><br>
+    · Hold phone naturally in hand or pocket<br>
+    · Works best with <strong>consistent stride</strong> on actual stairs<br>
+    · No barometer? Detection uses acceleration <strong>amplitude</strong><br>
+    · Each stair = 1 count (not each step of a flight)
+  </div>
+</div>
+
+<script>
+// ─── STATE ─────────────────────────────────────────────────────────────────
+const state = {
+  running: false,
+  stairsUp: 0,
+  stairsDown: 0,
+  totalSteps: 0,
+  netStairs: 0,
+
+  // Sensor raw
+  ax: 0, ay: 0, az: 0,
+
+  // Gravity low-pass (alpha = 0.85)
+  gx: 0, gy: 0, gz: 0,
+  GRAVITY_ALPHA: 0.85,
+
+  // Vertical accel (projected onto gravity)
+  vertAccel: 0,
+
+  // Step detection
+  lastPeakTime: 0,
+  lastPeakVal: 0,
+  STEP_MIN_INTERVAL_MS: 280,
+  STEP_PEAK_THRESHOLD: 1.2,     // m/s² — tune this
+
+  // Phase detection window
+  // We classify stairs vs flat by tracking vertical energy of recent steps
+  recentPeaks: [],         // {time, val, vertVelocitySign}
+  FLAT_PEAK_MAX: 1.8,      // below this → flat walk
+
+  // Velocity integration for direction
+  vertVel: 0,
+  VEL_DECAY: 0.92,
+
+  // Phase state machine
+  phase: 'IDLE',           // IDLE | WALKING | CLIMBING | DESCENDING
+  phaseTimer: null,
+
+  // Scope buffer
+  scopeBuffer: new Float32Array(220),
+  scopePtr: 0,
+  peakMarkers: [],
+};
+
+// ─── PERMISSION / INIT ─────────────────────────────────────────────────────
+function requestPermission() {
+  // iOS 13+ requires explicit permission
+  if (typeof DeviceMotionEvent !== 'undefined' &&
+      typeof DeviceMotionEvent.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission()
+      .then(perm => {
+        if (perm === 'granted') { startApp(); }
+        else { showAlert('Permission denied. Enable in Settings → Safari → Motion & Orientation Access.'); }
+      }).catch(err => { showAlert('Error: ' + err); });
+  } else if (typeof DeviceMotionEvent !== 'undefined') {
+    startApp();
+  } else {
+    showAlert('DeviceMotion API not available in this browser.');
+  }
+}
+
+function showAlert(msg) {
+  document.getElementById('alertBar').textContent = '⚠ ' + msg;
+  document.getElementById('alertBar').classList.add('show');
+  document.getElementById('overlay').classList.add('hidden');
+}
+
+function startApp() {
+  document.getElementById('overlay').classList.add('hidden');
+  window.addEventListener('devicemotion', onMotion);
+  setPhase('IDLE');
+  requestAnimationFrame(drawScope);
+}
+
+// ─── SENSOR HANDLER ────────────────────────────────────────────────────────
+function onMotion(e) {
+  if (!state.running) return;
+
+  const acc = e.accelerationIncludingGravity;
+  if (!acc) return;
+
+  const ax = acc.x || 0, ay = acc.y || 0, az = acc.z || 0;
+
+  // ── Low-pass: extract gravity
+  const alpha = state.GRAVITY_ALPHA;
+  state.gx = alpha * state.gx + (1 - alpha) * ax;
+  state.gy = alpha * state.gy + (1 - alpha) * ay;
+  state.gz = alpha * state.gz + (1 - alpha) * az;
+
+  // ── Linear acceleration (gravity removed)
+  const lx = ax - state.gx;
+  const ly = ay - state.gy;
+  const lz = az - state.gz;
+
+  // ── Project onto gravity direction (vertical component)
+  const gMag = Math.sqrt(state.gx*state.gx + state.gy*state.gy + state.gz*state.gz) || 9.8;
+  const vert = (lx*state.gx + ly*state.gy + lz*state.gz) / gMag;
+
+  state.vertAccel = vert;
+
+  // ── Scope buffer
+  state.scopeBuffer[state.scopePtr] = vert;
+  state.scopePtr = (state.scopePtr + 1) % state.scopeBuffer.length;
+
+  // ── Integrate for velocity direction
+  state.vertVel = state.vertVel * state.VEL_DECAY + vert * 0.02;
+
+  // ── Step peak detection (threshold crossing)
+  const now = Date.now();
+  const absVert = Math.abs(vert);
+
+  if (absVert > state.STEP_PEAK_THRESHOLD &&
+      absVert > state.lastPeakVal &&
+      (now - state.lastPeakTime) > state.STEP_MIN_INTERVAL_MS) {
+
+    // Candidate peak — confirm after small window
+    state.lastPeakVal = absVert;
+    state._pendingPeakTime = now;
+    state._pendingPeakVal = absVert;
+    state._pendingVelSign = state.vertVel;
+  }
+
+  // ── Confirm peak after signal drops back
+  if (state._pendingPeakTime &&
+      absVert < state.STEP_PEAK_THRESHOLD * 0.7 &&
+      (now - state._pendingPeakTime) < 400) {
+    confirmStep(now, state._pendingPeakVal, state._pendingVelSign);
+    state._pendingPeakTime = 0;
+    state.lastPeakTime = now;
+    state.lastPeakVal = 0;
+  }
+
+  // ── Auto-detect idle
+  if (absVert < 0.4) {
+    clearTimeout(state.idleTimer);
+    state.idleTimer = setTimeout(() => {
+      if (state.running) setPhase('IDLE');
+    }, 2000);
+  }
+}
+
+function confirmStep(now, peakVal, velSign) {
+  state.totalSteps++;
+
+  // Record to recent peaks window
+  state.recentPeaks.push({ time: now, val: peakVal, vel: velSign });
+  // Keep only last 6 peaks
+  if (state.recentPeaks.length > 6) state.recentPeaks.shift();
+
+  // Mark peak on scope
+  state.peakMarkers.push({ pos: state.scopePtr, val: peakVal, time: now });
+  setTimeout(() => state.peakMarkers.shift(), 1500);
+
+  // ── Classify: stair or flat?
+  const avgPeak = state.recentPeaks.reduce((s,p) => s + p.val, 0) / state.recentPeaks.length;
+  const isStair = avgPeak > state.FLAT_PEAK_MAX;
+
+  if (isStair) {
+    // Direction: positive vel = up (phone moving upward), negative = down
+    const avgVel = state.recentPeaks.reduce((s,p) => s + p.vel, 0) / state.recentPeaks.length;
+    const goingUp = avgVel > 0;
+
+    if (goingUp) {
+      state.stairsUp++;
+      setPhase('CLIMBING');
+    } else {
+      state.stairsDown++;
+      setPhase('DESCENDING');
+    }
+    state.netStairs = state.stairsUp - state.stairsDown;
+  } else {
+    setPhase('WALKING');
+  }
+
+  updateUI();
+}
+
+// ─── UI ────────────────────────────────────────────────────────────────────
+let isRunning = false;
+
+function toggleStart() {
+  isRunning = !isRunning;
+  state.running = isRunning;
+  const btn = document.getElementById('btnStart');
+  const dot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+
+  if (isRunning) {
+    btn.textContent = 'STOP';
+    btn.className = 'btn btn-danger';
+    dot.classList.add('active');
+    statusText.textContent = 'ACTIVE';
+    setPhase('IDLE');
+  } else {
+    btn.textContent = 'START';
+    btn.className = 'btn btn-primary';
+    dot.classList.remove('active');
+    statusText.textContent = 'IDLE';
+    setPhase('IDLE');
+  }
+}
+
+function resetAll() {
+  state.stairsUp = 0;
+  state.stairsDown = 0;
+  state.totalSteps = 0;
+  state.netStairs = 0;
+  state.recentPeaks = [];
+  state.scopeBuffer.fill(0);
+  updateUI();
+  setPhase('IDLE');
+}
+
+function updateUI() {
+  const count = document.getElementById('mainCount');
+  const net = state.netStairs;
+  count.textContent = net;
+
+  count.classList.remove('going-up', 'going-down', 'flash');
+  void count.offsetWidth; // reflow
+  count.classList.add('flash');
+  if (net > 0) count.classList.add('going-up');
+  else if (net < 0) count.classList.add('going-down');
+
+  document.getElementById('statUp').textContent = state.stairsUp;
+  document.getElementById('statDown').textContent = state.stairsDown;
+  document.getElementById('statSteps').textContent = state.totalSteps;
+}
+
+const PHASES = {
+  IDLE:       { icon: '⏸', name: 'Standby',   desc: 'Waiting for movement…', conf: '—',   badge: '⏸ STANDBY', badgeClass: '' },
+  WALKING:    { icon: '🚶', name: 'Walking',   desc: 'Flat surface detected',  conf: '●●○', badge: '→ FLAT',    badgeClass: '' },
+  CLIMBING:   { icon: '🔼', name: 'Ascending', desc: 'Stair climb detected',   conf: '●●●', badge: '↑ ASCENDING', badgeClass: 'up' },
+  DESCENDING: { icon: '🔽', name: 'Descending',desc: 'Stair descent detected', conf: '●●●', badge: '↓ DESCENDING', badgeClass: 'down' },
+};
+
+function setPhase(p) {
+  if (!PHASES[p]) return;
+  state.phase = p;
+  const ph = PHASES[p];
+  document.getElementById('phaseIcon').textContent = ph.icon;
+  document.getElementById('phaseName').textContent = ph.name;
+  document.getElementById('phaseDesc').textContent = ph.desc;
+  document.getElementById('phaseConf').textContent = ph.conf;
+  const badge = document.getElementById('dirBadge');
+  badge.textContent = ph.badge;
+  badge.className = 'direction-badge ' + ph.badgeClass;
+}
+
+// ─── OSCILLOSCOPE ──────────────────────────────────────────────────────────
+const canvas = document.getElementById('scope');
+const ctx = canvas.getContext('2d');
+
+function drawScope() {
+  const W = canvas.width, H = canvas.height;
+  const midY = H / 2;
+  const SCALE = 14; // px per m/s²
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Background grid
+  ctx.strokeStyle = 'rgba(30,34,48,0.8)';
+  ctx.lineWidth = 1;
+  for (let y = midY; y < H; y += 20) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  for (let y = midY; y > 0;  y -= 20) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  // Zero line
+  ctx.strokeStyle = 'rgba(0,229,160,0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(W, midY); ctx.stroke();
+
+  // Threshold lines
+  const thY = midY - state.STEP_PEAK_THRESHOLD * SCALE;
+  ctx.strokeStyle = 'rgba(255,209,102,0.3)';
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(0, thY); ctx.lineTo(W, thY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, midY + state.STEP_PEAK_THRESHOLD * SCALE); ctx.lineTo(W, midY + state.STEP_PEAK_THRESHOLD * SCALE); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Waveform
+  const buf = state.scopeBuffer;
+  const len = buf.length;
+  const step = W / len;
+
+  ctx.strokeStyle = '#00e5a0';
+  ctx.lineWidth = 1.5;
+  ctx.shadowBlur = 6;
+  ctx.shadowColor = 'rgba(0,229,160,0.4)';
+  ctx.beginPath();
+  for (let i = 0; i < len; i++) {
+    const idx = (state.scopePtr + i) % len;
+    const x = i * step;
+    const y = midY - buf[idx] * SCALE;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Peak flashes
+  const nowMs = Date.now();
+  for (const pm of state.peakMarkers) {
+    const age = nowMs - pm.time;
+    if (age > 600) continue;
+    const alpha = 1 - age / 600;
+    const relPos = ((pm.pos - state.scopePtr + len) % len);
+    const x = relPos * step;
+    ctx.fillStyle = `rgba(255,77,109,${alpha})`;
+    ctx.beginPath();
+    ctx.arc(x, midY - pm.val * SCALE, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  requestAnimationFrame(drawScope);
+}
+
+// ─── BOOT ──────────────────────────────────────────────────────────────────
+// Check if sensors are available at all (desktop browser test mode)
+if (typeof DeviceMotionEvent === 'undefined') {
+  document.getElementById('overlay').classList.add('hidden');
+  showAlert('DeviceMotion not supported. Open on a mobile device for real tracking. Demo mode: tap START to simulate.');
+  // Simulate for desktop testing
+  let t = 0;
+  function simulate() {
+    if (!state.running) { setTimeout(simulate, 100); return; }
+    t += 0.1;
+    // Simulate climbing: sinusoidal vertical with bias
+    const vert = Math.sin(t * 3.5) * 2.5 + Math.sin(t * 1.2) * 0.4;
+    state.scopeBuffer[state.scopePtr] = vert;
+    state.scopePtr = (state.scopePtr + 1) % state.scopeBuffer.length;
+
+    const absVert = Math.abs(vert);
+    const now = Date.now();
+    if (absVert > state.STEP_PEAK_THRESHOLD && absVert > state.lastPeakVal &&
+        (now - state.lastPeakTime) > state.STEP_MIN_INTERVAL_MS) {
+      state.lastPeakVal = absVert;
+      state._pendingPeakTime = now;
+      state._pendingPeakVal = absVert;
+      state._pendingVelSign = 0.3; // simulate going up
+    }
+    if (state._pendingPeakTime && absVert < state.STEP_PEAK_THRESHOLD * 0.7 &&
+        (now - state._pendingPeakTime) < 400) {
+      confirmStep(now, state._pendingPeakVal, state._pendingVelSign);
+      state._pendingPeakTime = 0;
+      state.lastPeakTime = now;
+      state.lastPeakVal = 0;
+    }
+    setTimeout(simulate, 50);
+  }
+  simulate();
+  document.getElementById('overlay').classList.add('hidden');
+  requestAnimationFrame(drawScope);
+} else {
+  // Show overlay for permission
+  requestAnimationFrame(drawScope);
+}
+</script>
+</body>
+</html>
